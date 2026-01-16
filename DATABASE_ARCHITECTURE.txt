@@ -1,0 +1,290 @@
+# Database Layer Integration Architecture
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│                     POLYMARKET ARBITRAGE SYSTEM                     │
+└────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────┐
+│  PolymarketClient   │ (Existing - Agent A)
+│  - get_markets()    │
+│  - get_order_book() │
+└──────────┬──────────┘
+           │
+           ↓
+┌─────────────────────────────────────┐
+│  ArbitrageDetector (Agent A)        │
+│  - scan_all_markets()               │
+│  - analyze_event()                  │
+└──────────┬──────────────────────────┘
+           │
+           │ ArbitrageOpportunity
+           ↓
+┌─────────────────────────────────────┐
+│  PositionManager (Agent D)          │
+│  - calculate_position_size()        │────┐
+│  - check_risk_limits() ←────────────┼────┼─── DatabaseManager
+│  - get_available_capital()          │    │    - get_daily_loss()
+└──────────┬──────────────────────────┘    │    - get_open_positions()
+           │                                │    - get_total_capital_at_risk()
+           │ Position Size                 │
+           ↓                                │
+┌─────────────────────────────────────┐    │
+│  ArbitrageExecutor (Agent B)        │    │
+│  - execute_opportunity()            │    │
+│  - verify_prices()                  │    │
+│  - execute_legs_simultaneously()    │    │
+└──────────┬──────────────────────────┘    │
+           │                                │
+           │ ExecutionResult                │
+           ↓                                │
+┌────────────────────────────────────────────────────────┐
+│              DatabaseManager (Agent C)                 │ ← YOU ARE HERE
+│  ┌──────────────────────────────────────────────────┐ │
+│  │  Core Operations                                  │ │
+│  │  • save_trade(result, opportunity) → Trade       │ │
+│  │  • create_position(...)  → Position              │ │
+│  │  • update_position_value(id, price)              │ │
+│  │  • close_position(id, exit_price)                │ │
+│  └──────────────────────────────────────────────────┘ │
+│  ┌──────────────────────────────────────────────────┐ │
+│  │  Risk Monitoring                                  │ │
+│  │  • get_daily_loss() → float                      │ │
+│  │  • get_total_capital_at_risk() → float           │ │
+│  │  • get_trade_count_today() → int                 │ │
+│  └──────────────────────────────────────────────────┘ │
+│  ┌──────────────────────────────────────────────────┐ │
+│  │  Performance Analytics                            │ │
+│  │  • calculate_performance_metrics() → dict        │ │
+│  │  • get_recent_trades(limit) → List[Trade]        │ │
+│  └──────────────────────────────────────────────────┘ │
+└────────────────┬───────────────────┬───────────────────┘
+                 │                   │
+                 ↓                   ↓
+         ┌──────────────┐    ┌──────────────┐
+         │ Trade Table  │    │Position Table│
+         │ (Execution   │    │ (Open/Closed │
+         │  History)    │    │  Positions)  │
+         └──────────────┘    └──────────────┘
+                 ↑                   ↑
+                 └─────────┬─────────┘
+                           │
+                 ┌─────────────────────┐
+                 │  Alembic Migrations │
+                 │  - Version control  │
+                 │  - Schema evolution │
+                 └─────────────────────┘
+
+═══════════════════════════════════════════════════════════════════
+
+DATA FLOW EXAMPLE: Successful Trade
+
+1. Detector finds opportunity
+   ArbitrageOpportunity {
+     opportunity_id: "opp-001"
+     yes_price: 0.55, no_price: 0.48
+     spread: 0.03, net_profit_pct: 1.8%
+   }
+
+2. Position Manager checks risk limits
+   DatabaseManager.get_daily_loss() → $45.00
+   DatabaseManager.get_total_capital_at_risk() → $2,500.00
+   ✓ Within limits, calculate position size → $1,000
+
+3. Executor executes trade
+   YES: Buy 100 @ 0.55 → FILLED
+   NO:  Buy 100 @ 0.48 → FILLED
+
+4. Executor returns ExecutionResult
+   ExecutionResult {
+     success: True
+     yes_filled_size: 100, yes_avg_price: 0.55
+     no_filled_size: 100, no_avg_price: 0.48
+     total_capital_used: $1,030
+     actual_profit_usd: $18.50
+   }
+
+5. Database saves trade
+   trade = DatabaseManager.save_trade(result, opportunity)
+   → Trade(id=1, profit=$18.50, success=True)
+
+6. Database creates positions (optional)
+   DatabaseManager.create_position(
+     token_id=yes_token_id, side="YES",
+     size=100, entry_price=0.55
+   )
+   → Position(id=1, status=OPEN, unrealized_pnl=0)
+
+7. Main scheduler queries metrics
+   metrics = DatabaseManager.calculate_performance_metrics()
+   → {
+       total_trades: 15,
+       win_rate: 73.33%,
+       net_profit: $245.50,
+       sharpe_ratio: 1.82
+     }
+
+═══════════════════════════════════════════════════════════════════
+
+DATABASE SCHEMA
+
+┌─────────────────────────────────────────────────────────────┐
+│ TRADES TABLE                                                 │
+├─────────────────────┬───────────────┬────────────────────────┤
+│ Field               │ Type          │ Description            │
+├─────────────────────┼───────────────┼────────────────────────┤
+│ id                  │ Integer (PK)  │ Auto-increment         │
+│ opportunity_id      │ String(50)    │ Links to opportunity   │
+│ event_id            │ String(100)   │ Polymarket event ID    │
+│ success             │ Boolean       │ Trade succeeded?       │
+│ yes_filled_size     │ Float         │ YES shares filled      │
+│ yes_avg_price       │ Float         │ YES average price      │
+│ yes_status          │ String(20)    │ FILLED/PARTIAL/FAILED  │
+│ no_filled_size      │ Float         │ NO shares filled       │
+│ no_avg_price        │ Float         │ NO average price       │
+│ no_status           │ String(20)    │ FILLED/PARTIAL/FAILED  │
+│ total_capital_used  │ Float         │ USDC used              │
+│ actual_profit_usd   │ Float         │ Profit/loss in USD     │
+│ actual_profit_pct   │ Float         │ Profit percentage      │
+│ execution_time_ms   │ Float         │ Execution time         │
+│ error_message       │ String(1000)  │ Error if failed        │
+│ partial_fill_risk   │ Boolean       │ Single-leg risk?       │
+│ executed_at         │ DateTime      │ Execution timestamp    │
+│ created_at          │ DateTime      │ Record creation        │
+│ updated_at          │ DateTime      │ Last update            │
+├─────────────────────┴───────────────┴────────────────────────┤
+│ INDEXES: executed_at, success, opportunity_id               │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ POSITIONS TABLE                                              │
+├─────────────────────┬───────────────┬────────────────────────┤
+│ Field               │ Type          │ Description            │
+├─────────────────────┼───────────────┼────────────────────────┤
+│ id                  │ Integer (PK)  │ Auto-increment         │
+│ trade_id            │ Integer (FK)  │ Links to trades.id     │
+│ token_id            │ String(100)   │ Token/market ID        │
+│ event_id            │ String(100)   │ Event ID               │
+│ side                │ String(10)    │ YES or NO              │
+│ size                │ Float         │ Number of shares       │
+│ entry_price         │ Float         │ Entry price (0-1)      │
+│ current_price       │ Float         │ Current market price   │
+│ cost_basis          │ Float         │ USDC invested          │
+│ current_value       │ Float         │ Current market value   │
+│ unrealized_pnl      │ Float         │ Unrealized P&L         │
+│ realized_pnl        │ Float         │ Realized P&L on close  │
+│ status              │ String(20)    │ OPEN/CLOSED/EXPIRED    │
+│ opened_at           │ DateTime      │ Position open time     │
+│ closed_at           │ DateTime      │ Position close time    │
+│ updated_at          │ DateTime      │ Last update            │
+├─────────────────────┴───────────────┴────────────────────────┤
+│ INDEXES: status, token_id, event_id, opened_at, trade_id   │
+│ FOREIGN KEY: trade_id → trades.id                           │
+└─────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════
+
+KEY INTERFACES
+
+┌────────────────────────────────────────────────────────────┐
+│ FROM EXECUTOR (Agent B) → TO DATABASE (Agent C)            │
+├────────────────────────────────────────────────────────────┤
+│                                                             │
+│ Input:  ExecutionResult                                     │
+│         ArbitrageOpportunity (optional, for context)        │
+│                                                             │
+│ Call:   await db.save_trade(result, opportunity)           │
+│                                                             │
+│ Output: Trade (with database ID assigned)                   │
+│                                                             │
+└────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────┐
+│ FROM DATABASE (Agent C) → TO POSITION MANAGER (Agent D)    │
+├────────────────────────────────────────────────────────────┤
+│                                                             │
+│ Query:  await db.get_daily_loss()                          │
+│ Return: float (e.g., 45.50 means $45.50 loss today)        │
+│                                                             │
+│ Query:  await db.get_open_positions()                      │
+│ Return: List[Position] (all OPEN positions)                │
+│                                                             │
+│ Query:  await db.get_total_capital_at_risk()               │
+│ Return: float (sum of cost_basis for open positions)       │
+│                                                             │
+└────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────┐
+│ FROM DATABASE (Agent C) → TO SCHEDULER (Agent E)           │
+├────────────────────────────────────────────────────────────┤
+│                                                             │
+│ Query:  await db.calculate_performance_metrics(days=30)    │
+│ Return: dict {                                              │
+│           "total_trades": 150,                              │
+│           "win_rate": 68.5,                                 │
+│           "net_profit": 1250.75,                            │
+│           "sharpe_ratio": 1.82,                             │
+│           "max_drawdown": 12.5,                             │
+│           "avg_profit_per_trade": 8.34                      │
+│         }                                                   │
+│                                                             │
+└────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════
+
+IMPLEMENTATION CHECKLIST
+
+✅ Models (src/utils/models.py)
+   ✅ Trade model with all ExecutionResult fields
+   ✅ Position model with P&L tracking
+   ✅ Indexes on frequently queried columns
+   ✅ Foreign key relationship (Position → Trade)
+   ✅ Helper methods (to_dict, update_market_value, close_position)
+
+✅ Database Manager (src/utils/database.py)
+   ✅ Async initialization and cleanup
+   ✅ save_trade(result, opportunity) → Trade
+   ✅ create_position(...) → Position
+   ✅ update_position_value(id, price)
+   ✅ close_position(id, exit_price)
+   ✅ get_open_positions() → List[Position]
+   ✅ get_daily_loss() → float
+   ✅ get_total_capital_at_risk() → float
+   ✅ get_trade_count_today() → int
+   ✅ calculate_performance_metrics() → dict
+   ✅ Context manager support (__aenter__/__aexit__)
+
+✅ Tests (tests/test_database.py)
+   ✅ 19+ comprehensive test cases
+   ✅ Trade management tests
+   ✅ Position management tests
+   ✅ Risk monitoring tests
+   ✅ Performance metrics tests
+   ✅ Edge case coverage
+
+✅ Migrations (alembic/)
+   ✅ Alembic configuration (alembic.ini)
+   ✅ Async environment setup (env.py)
+   ✅ Migration template (script.py.mako)
+   ✅ Initial schema migration (versions/001_initial.py)
+
+✅ Documentation
+   ✅ DATABASE_README.md (complete usage guide)
+   ✅ DATABASE_IMPLEMENTATION_NOTES.md (technical notes)
+   ✅ TASK3_SUMMARY.md (deliverables summary)
+   ✅ This architecture diagram
+
+═══════════════════════════════════════════════════════════════════
+
+READY FOR INTEGRATION ✅
+
+All interfaces defined in INTERFACE_SPEC.md Section 4.4 are implemented
+and ready for use by other agents.
+
+Next Steps:
+1. Upgrade Python to 3.7+ (current: 3.6.5)
+2. Run: pip install -r requirements.txt
+3. Run: alembic upgrade head
+4. Run: pytest tests/test_database.py -v
+5. Integrate with Agents B, D, E following examples above
+```

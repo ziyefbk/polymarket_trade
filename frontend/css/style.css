@@ -1,0 +1,405 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 20px;
+    line-height: 1.6;
+}
+
+.dashboard {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* ========================================================================= */
+/* 顶部栏 */
+/* ========================================================================= */
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding: 20px 24px;
+    background: #1e293b;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.header h1 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #f1f5f9;
+}
+
+.status-indicator {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.status-badge.running {
+    background: #10b981;
+    color: white;
+}
+
+.status-badge.disconnected {
+    background: #ef4444;
+    color: white;
+}
+
+.status-badge.error {
+    background: #f59e0b;
+    color: white;
+}
+
+#uptime {
+    font-size: 14px;
+    color: #94a3b8;
+}
+
+/* ========================================================================= */
+/* 指标卡片网格 */
+/* ========================================================================= */
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.metric-card {
+    background: #1e293b;
+    padding: 24px;
+    border-radius: 12px;
+    border: 1px solid #334155;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.metric-card h3 {
+    font-size: 14px;
+    font-weight: 500;
+    color: #94a3b8;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metric-value {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #f1f5f9;
+}
+
+.metric-change {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.metric-change.positive {
+    color: #10b981;
+}
+
+.metric-change.negative {
+    color: #ef4444;
+}
+
+.metric-subtitle {
+    font-size: 14px;
+    color: #64748b;
+}
+
+/* ========================================================================= */
+/* 主内容区域 */
+/* ========================================================================= */
+
+.main-content {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.chart-section, .trades-section {
+    background: #1e293b;
+    padding: 24px;
+    border-radius: 12px;
+    border: 1px solid #334155;
+}
+
+.chart-section h2, .trades-section h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #f1f5f9;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+}
+
+#equity-chart {
+    max-height: 300px;
+}
+
+/* ========================================================================= */
+/* 交易列表 */
+/* ========================================================================= */
+
+.trades-list {
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.trades-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.trades-list::-webkit-scrollbar-track {
+    background: #0f172a;
+    border-radius: 4px;
+}
+
+.trades-list::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 4px;
+}
+
+.trades-list::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
+
+.no-data {
+    text-align: center;
+    color: #64748b;
+    padding: 40px;
+    font-size: 14px;
+}
+
+.trade-item {
+    padding: 16px;
+    margin-bottom: 12px;
+    background: #0f172a;
+    border-radius: 8px;
+    border-left: 3px solid #3b82f6;
+    transition: transform 0.2s ease;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.trade-item:hover {
+    transform: translateX(4px);
+}
+
+.trade-item.CLOSED {
+    border-left-color: #10b981;
+}
+
+.trade-item.FAILED {
+    border-left-color: #ef4444;
+}
+
+.trade-item.OPEN {
+    border-left-color: #f59e0b;
+}
+
+.trade-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.trade-title {
+    font-weight: 500;
+    font-size: 14px;
+    color: #f1f5f9;
+    flex: 1;
+    margin-right: 12px;
+}
+
+.trade-profit {
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.trade-profit.positive {
+    color: #10b981;
+}
+
+.trade-profit.negative {
+    color: #ef4444;
+}
+
+.trade-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.trade-type {
+    padding: 2px 8px;
+    background: #334155;
+    border-radius: 4px;
+    font-size: 11px;
+    text-transform: uppercase;
+}
+
+.trade-time {
+    font-style: italic;
+}
+
+/* ========================================================================= */
+/* 详情区域 */
+/* ========================================================================= */
+
+.details-section {
+    background: #1e293b;
+    padding: 24px;
+    border-radius: 12px;
+    border: 1px solid #334155;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #0f172a;
+    border-radius: 6px;
+}
+
+.detail-row span {
+    color: #94a3b8;
+    font-size: 14px;
+}
+
+.detail-row strong {
+    color: #f1f5f9;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+/* ========================================================================= */
+/* 连接状态提示 */
+/* ========================================================================= */
+
+.connection-toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.connection-toast.hidden {
+    opacity: 0;
+    transform: translateY(20px);
+    pointer-events: none;
+}
+
+#connection-message {
+    font-size: 14px;
+    color: #e2e8f0;
+}
+
+/* ========================================================================= */
+/* 响应式设计 */
+/* ========================================================================= */
+
+@media (max-width: 1024px) {
+    .main-content {
+        grid-template-columns: 1fr;
+    }
+
+    .details-section {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    .header {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .details-section {
+        grid-template-columns: 1fr;
+    }
+
+    .metric-value {
+        font-size: 28px;
+    }
+
+    .header h1 {
+        font-size: 20px;
+    }
+}
+
+/* ========================================================================= */
+/* Loading状态 */
+/* ========================================================================= */
+
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #3b82f6;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}

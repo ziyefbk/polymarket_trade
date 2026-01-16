@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polymarket套利监控台</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- 顶部状态栏 -->
+        <header class="header">
+            <h1>🤖 Polymarket套利机器人</h1>
+            <div class="status-indicator">
+                <span id="bot-status" class="status-badge running">运行中</span>
+                <span id="uptime">运行时间: --</span>
+            </div>
+        </header>
+
+        <!-- 关键指标卡片 -->
+        <section class="metrics-grid">
+            <div class="metric-card">
+                <h3>今日利润</h3>
+                <p class="metric-value" id="daily-profit">$0.00</p>
+                <span class="metric-change positive" id="daily-profit-change">--</span>
+            </div>
+
+            <div class="metric-card">
+                <h3>胜率</h3>
+                <p class="metric-value" id="win-rate">--%</p>
+                <span class="metric-subtitle" id="win-rate-subtitle">-- 成功</span>
+            </div>
+
+            <div class="metric-card">
+                <h3>今日交易</h3>
+                <p class="metric-value" id="trades-today">0</p>
+                <span class="metric-subtitle" id="opportunities-today">机会: 0</span>
+            </div>
+
+            <div class="metric-card">
+                <h3>未平仓</h3>
+                <p class="metric-value" id="open-positions">0</p>
+                <span class="metric-subtitle" id="open-positions-capital">$0 资金</span>
+            </div>
+        </section>
+
+        <!-- 主要内容区域 -->
+        <div class="main-content">
+            <!-- 左侧：资金曲线图 -->
+            <section class="chart-section">
+                <h2>资金曲线</h2>
+                <div class="chart-container">
+                    <canvas id="equity-chart"></canvas>
+                </div>
+            </section>
+
+            <!-- 右侧：实时交易流 -->
+            <section class="trades-section">
+                <h2>最近交易</h2>
+                <div id="trades-list" class="trades-list">
+                    <div class="no-data">暂无交易记录</div>
+                </div>
+            </section>
+        </div>
+
+        <!-- 底部：性能指标详情 -->
+        <section class="details-section">
+            <div class="detail-row">
+                <span>总利润:</span>
+                <strong id="total-profit">$0.00</strong>
+            </div>
+            <div class="detail-row">
+                <span>夏普比率:</span>
+                <strong id="sharpe-ratio">N/A</strong>
+            </div>
+            <div class="detail-row">
+                <span>最大回撤:</span>
+                <strong id="max-drawdown">--%</strong>
+            </div>
+            <div class="detail-row">
+                <span>平均利润/笔:</span>
+                <strong id="avg-profit">$0.00</strong>
+            </div>
+        </section>
+
+        <!-- 连接状态提示 -->
+        <div id="connection-toast" class="connection-toast hidden">
+            <span id="connection-message">正在连接...</span>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/static/js/websocket.js"></script>
+    <script src="/static/js/charts.js"></script>
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
